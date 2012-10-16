@@ -43,13 +43,17 @@ extract_fields(Value) ->
 -spec extract_headers(binary()) -> {[binary()], binary()}.
 extract_headers(Value) ->
     YamlPat = "^\-{3}$(.+?)^\-{3}$",
-    Opts = [group, dotall, multiline],
-    [[<<>>, Header],[Body]] = re:split(Value, YamlPat, Opts),
-    Headers = [H || H <- binary:split(Header, <<"\n">>, [global]), H /= <<>>],
-    {Headers, Body}.
+    Opts = [group, dotall, multiline, {newline, anycrlf}],
+    case re:split(Value, YamlPat, Opts) of
+        [[_, Header],[Body]] ->
+            Headers = [H || H <- binary:split(Header, <<"\n">>, [global]), H /= <<>>],
+            {Headers, Body};
+        [[Body]] ->
+            {[], Body}
+    end.
 
 key_value(Header) ->
-    re:split(Header, <<": ">>).
+    [list_to_binary(string:strip(S)) || S <- re:split(Header, <<":\s*">>, [{parts,2},{return,list}])].
 
 extract_header([<<"title">>, Title], Fields) ->
     [{title_t, Title}|Fields];
@@ -62,9 +66,13 @@ extract_header([<<"document">>, Document], Fields) ->
 extract_header([<<"audience">>, Audience], Fields) ->
     [{audience_s, Audience}|Fields];
 extract_header([<<"keywords">>, Keywords], Fields) ->
-    [_,Keywords2,_] = re:replace(Keywords, <<"\\[|\\]">>, <<"">>, [global]),
-    Keywords3 = re:split(Keywords2, <<", ">>),
-    Keywords4 = [{keywords_ss, K} || K <- Keywords3],
-    Fields ++ Keywords4;
+    case re:replace(Keywords, <<"\\[|\\]">>, <<"">>, [global]) of
+        [_,Keywords2,_] ->
+            Keywords3 = re:split(Keywords2, <<",\s*">>),
+            Keywords4 = [{keywords_ss, K} || K <- Keywords3],
+            Fields ++ Keywords4;
+        _ ->
+            Fields
+    end;
 extract_header(_, Fields) ->
     Fields.
