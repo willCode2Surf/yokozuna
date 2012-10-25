@@ -102,3 +102,7 @@ cp -vr $example_dir $dir
 rm -rf $dir/{multicore,solr,README.txt}
 cp -v solr.xml $dir
 cp -v *.properties $dir
+
+# copy jars required for Solr Cell support
+cp -v $src_dir/dist/apache-solr-cell* $dir/lib
+cp -v $src_dir/contrib/extraction/lib/* $dir/lib
