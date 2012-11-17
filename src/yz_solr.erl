@@ -211,7 +211,9 @@ search(Core, Headers, Params, Mapping) ->
     %%       manually
     URL = BaseURL ++ "?shards=" ++ ShardFrags2 ++ "&" ++ Encoded,
     Body = [],
-    Opts = [{response_format, binary}],
+    Opts = [{response_format, binary},
+            {max_sessions, 10}],
+    %% {ok, PW} = ibrowse:spawn_worker_process(URL),
     case ibrowse:send_req(URL, Headers, get, Body, Opts) of
         {ok, "200", RHeaders, Resp} -> {RHeaders, Resp};
         {ok, "404", _, _} -> throw(not_found);
