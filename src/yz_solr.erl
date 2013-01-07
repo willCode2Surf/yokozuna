@@ -43,7 +43,7 @@
 build_partition_delete_query(LPartitions) ->
     Queries = [?QUERY(?YZ_PN_FIELD_S ++ ":" ++ ?INT_TO_STR(LP))
                || LP <- LPartitions],
-    xmerl:export_simple([{delete, [], Queries}], xmerl_xml).
+    {delete, [], Queries}.
 
 -spec build_rk_delete_query(binary()) -> term().
 build_rk_delete_query(RiakKey) ->
@@ -90,7 +90,7 @@ cores() ->
 -spec delete(string(), string()) -> ok.
 delete(Core, DocID) ->
     BaseURL = base_url() ++ "/" ++ Core ++ "/update",
-    XML = encode_delete({id,DocID}),
+    XML = prepare_xml([encode_delete({id,DocID})]),
     Params = [],
     Encoded = mochiweb_util:urlencode(Params),
     URL = BaseURL ++ "?" ++ Encoded,
@@ -101,7 +101,8 @@ delete(Core, DocID) ->
         Err -> throw({"Failed to delete doc", DocID, Err})
     end.
 
-delete_by_query(Core, XML) ->
+delete_by_query(Core, Query) ->
+    XML = prepare_xml([encode_delete(Query)]),
     BaseURL = base_url() ++ "/" ++ Core ++ "/update",
     Headers = [{content_type, "text/xml"}],
     case ibrowse:send_req(BaseURL, Headers, post, XML, []) of
@@ -151,9 +152,9 @@ entropy_data(Core, Filter) ->
     end.
 
 %% @doc Index the given `Docs'.
-index(Core, Docs) ->
+index(Core, Docs, OtherOps) ->
     BaseURL = base_url() ++ "/" ++ Core ++ "/update",
-    XML = prepare_xml(Docs),
+    XML = prepare_xml([{update, [], [OtherOps, encode_add(Docs)]}]),
     Params = [],
     Encoded = mochiweb_util:urlencode(Params),
     URL = BaseURL ++ "?" ++ Encoded,
@@ -164,9 +165,11 @@ index(Core, Docs) ->
         Err -> throw({"Failed to index docs", Docs, Err})
     end.
 
-prepare_xml(Docs) ->
-    Content = {add, [], lists:map(fun encode_doc/1, Docs)},
-    xmerl:export_simple([Content], xmerl_xml).
+encode_add(Docs) ->
+    {add, [], lists:map(fun encode_doc/1, Docs)}.
+
+prepare_xml(EncodedOps) ->
+    xmerl:export_simple(EncodedOps, xmerl_xml).
 
 %% @doc Return the set of unique partitions stored on this node.
 -spec partition_list(string()) -> binary().
@@ -257,14 +260,14 @@ encode_commit() ->
 
 encode_delete({key,Key})->
     Query = "_yz_rk:" ++ binary_to_list(Key),
-    xmerl:export_simple([{delete, [], [{'query', [], [Query]}]}], xmerl_xml);
+    {delete, [], [{'query', [], [Query]}]};
 
 encode_delete({key,Key,siblings})->
     Query = "_yz_rk:" ++ binary_to_list(Key) ++ " AND _yz_vtag:[* TO *]",
-    xmerl:export_simple([{delete, [], [{'query', [], [Query]}]}], xmerl_xml);
+    {delete, [], [{'query', [], [Query]}]};
 
 encode_delete({id,Id})->
-    xmerl:export_simple([{delete, [], [{id, [], [Id]}]}], xmerl_xml).
+    {delete, [], [{id, [], [Id]}]}.
 
 encode_doc({doc, Fields}) ->
 	{doc, [], lists:map(fun encode_field/1,Fields)};

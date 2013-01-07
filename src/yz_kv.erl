@@ -113,11 +113,11 @@ index(Obj, delete, VNodeState) ->
     IdxN = {first_partition(IdealPreflist), riak_core_bucket:n_val(BProps)},
 
     try
-        XML = yz_solr:encode_delete({key, Key}),
-        ok = yz_solr:delete_by_query(which_index(Bucket, BProps), XML),
+        ok = yz_solr:delete_by_query(which_index(Bucket, BProps), {key, Key}),
         ok = update_hashtree(delete, get_partition(VNodeState), IdxN, BKey)
     catch _:Err ->
-        ?ERROR("failed to delete docid ~p with error ~p", [BKey, Err])
+        ?ERROR("failed to delete docid ~p with error ~p ~p",
+               [BKey, Err, erlang:get_stacktrace()])
     end,
     ok;
 
@@ -140,11 +140,12 @@ index(Obj, Reason, VNodeState) ->
     IdxN = {first_partition(IdealPreflist), NVal},
 
     try
-        ok = yz_solr:index(Index, Docs),
-        ok = cleanup(length(Docs), {Index, Obj, Key, LP}),
+        DelOp = cleanup(length(Docs), {Index, Obj, Key, LP}),
+        ok = yz_solr:index(Index, Docs, DelOp),
         ok = update_hashtree({insert, yz_kv:hash_object(Obj)}, P, IdxN, BKey)
     catch _:Err ->
-        ?ERROR("failed to index object ~p with error ~p", [BKey, Err])
+        ?ERROR("failed to index object ~p with error ~p ~p",
+               [BKey, Err, erlang:get_stacktrace()])
     end,
     ok.
 
@@ -212,21 +213,21 @@ check_flag(Flag) ->
     true == erlang:get(Flag).
 
 %% @private
-cleanup(1, {Index, _Obj, Key, _LP}) ->
+cleanup(1, {_Index, _Obj, Key, _LP}) ->
     %% Delete any siblings
-    XML = yz_solr:encode_delete({key, Key, siblings}),
-    ok = yz_solr:delete_by_query(Index, XML);
+    yz_solr:encode_delete({key, Key, siblings});
+    %% ok = yz_solr:delete_by_query(Index, XML);
 
-cleanup(2, {Index, Obj, _Key, LP}) ->
+cleanup(2, {_Index, Obj, _Key, LP}) ->
     %% An object has crossed the threshold from
     %% being a single value Object, to a sibling
     %% value Object, delete the non-sibling ID
-    DocID = binary_to_list(yz_doc:doc_id(Obj,
-                                         ?INT_TO_BIN(LP))),
-    ok = yz_solr:delete(Index, DocID);
+    yz_solr:encode_delete({id, yz_doc:doc_id(Obj, ?INT_TO_BIN(LP))});
+    %% DocID = binary_to_list()),
+    %% ok = yz_solr:delete(Index, DocID);
 
 cleanup(_, _) ->
-    ok.
+    [].
 
 %% @private
 %%

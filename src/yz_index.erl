@@ -127,8 +127,13 @@ remove_non_owned_data(Index) ->
     OwnedAndNext = yz_misc:owned_and_next_partitions(node(), Ring),
     NonOwned = ordsets:subtract(IndexPartitions, OwnedAndNext),
     LNonOwned = yz_cover:logical_partitions(Ring, NonOwned),
-    Query = yz_solr:build_partition_delete_query(LNonOwned),
-    ok = yz_solr:delete_by_query(Index, Query),
+    case LNonOwned of
+        [] ->
+            ok;
+        _ ->
+            Query = yz_solr:build_partition_delete_query(LNonOwned),
+            ok = yz_solr:delete_by_query(Index, Query)
+    end,
     lists:zip(NonOwned, LNonOwned).
 
 -spec schema_name(index_info()) -> schema_name().
