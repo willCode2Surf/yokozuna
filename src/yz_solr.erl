@@ -209,10 +209,11 @@ search(Core, Headers, Params, Mapping) ->
     Encoded = mochiweb_util:urlencode(Params2),
     %% NOTE: For some reason ShardFrags2 breaks urlencode so add it
     %%       manually
-    URL = BaseURL ++ "?shards=" ++ ShardFrags2 ++ "&" ++ Encoded,
-    Body = [],
+    URL = BaseURL,
+    Body = "?shards=" ++ ShardFrags2 ++ "&" ++ Encoded,
     Opts = [{response_format, binary}],
-    case ibrowse:send_req(URL, Headers, get, Body, Opts) of
+    Headers2 = [{content_type, "application/x-www-form-urlencoded"}|Headers],
+    case ibrowse:send_req(URL, Headers2, post, Body, Opts) of
         {ok, "200", RHeaders, Resp} -> {RHeaders, Resp};
         {ok, "404", _, _} -> throw(not_found);
         Err -> throw({"Failed to search", URL, Err})
