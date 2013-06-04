@@ -138,7 +138,7 @@ get_user_meta(MD) ->
             %% NOTE: Need to call `to_lower' because
             %%       `erlang:decode_packet' which is used by mochiweb
             %%       will modify the case of certain header names
-            MM2 = [{list_to_binary(string:to_lower(K)), list_to_binary(V)}
+            MM2 = [{to_lower(K), maybe_binary(V)}
                    || {K,V} <- MetaMeta],
             dict:from_list(MM2)
     end.
@@ -182,8 +182,7 @@ get_tag_names(MD) ->
 -spec split_tag_names(binary()) -> [binary()].
 split_tag_names(TagNames) ->
     NoSpace = binary:replace(TagNames, <<" ">>, <<"">>, [global]),
-    Lower = list_to_binary(string:to_lower(binary_to_list(NoSpace))),
-    binary:split(Lower, <<",">>, [global]).
+    binary:split(to_lower(NoSpace), <<",">>, [global]).
 
 %%%===================================================================
 %%% Private
@@ -210,3 +209,14 @@ gen_ed(O, Partition) ->
     %% TODO: do this in KV vnode and pass to hook
     Hash = base64:encode(yz_kv:hash_object(O)),
     <<TS/binary," ",Partition/binary," ",RiakBucket/binary," ",RiakKey/binary," ",Hash/binary>>.
+
+%% Lower either binary or string values
+to_lower(Val) when is_binary(Val) ->
+    list_to_binary(string:to_lower(binary_to_list(Val)));
+to_lower(Val) ->
+    string:to_lower(Val).
+
+maybe_binary(Val) when is_binary(Val) ->
+    Val;
+maybe_binary(Val) ->
+    list_to_binary(Val).
