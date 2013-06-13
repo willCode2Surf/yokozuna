@@ -120,6 +120,9 @@ echo "Creating solr dir from Solr example..."
 cp -r $example_dir $dir
 rm -rf $dir/{cloud-scripts,example-DIH,exampledocs,multicore,logs,solr,README.txt,logging.properties}
 cp solr.xml $dir
+if [ $SRC != "git" ]; then
+    cp jetty.xml $dir/etc
+fi
 cp *.properties $dir
 
 echo "Finished creating solr dir..."

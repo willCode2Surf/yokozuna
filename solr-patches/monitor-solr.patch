@@ -1,0 +1,17 @@
+--- a/solr/example/etc/jetty.xml	2013-06-12 21:02:39.000000000 -0500
++++ ../../priv/jetty.xml	2013-06-12 20:37:34.000000000 -0500
+@@ -13,6 +13,14 @@
+ <Configure id="Server" class="org.eclipse.jetty.server.Server">
+ 
+     <!-- =========================================================== -->
++    <!-- Monitor Solr instance and die if Erlang dies                -->
++    <!-- =========================================================== -->
++    <Call class="com.basho.yokozuna.monitor.Monitor" name="monitor">
++        <Arg>data/yz/monitor.sh</Arg>
++        <Arg>10</Arg>
++    </Call>
++
++    <!-- =========================================================== -->
+     <!-- Server Thread Pool                                          -->
+     <!-- =========================================================== -->
+     <Set name="ThreadPool">
